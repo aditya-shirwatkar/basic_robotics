@@ -1,1 +1,1 @@
-# Lecture Notes Assignments
+# Lecture Series Assignments
