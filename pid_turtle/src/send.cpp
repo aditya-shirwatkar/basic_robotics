@@ -17,7 +17,7 @@ class PID{
         turtlesim::Pose cpose;
         geometry_msgs::Twist cd_vel;
         
-        float k1=16,k2=0.00001,k3=0.01; 
+        float k1=7.5,k2=0.00001,k3=0.01; 
 
     public:
         PID();
@@ -57,9 +57,9 @@ class PID{
             float diff_theta = 0;
             float integral_dist = 0;
             float diff_dist = 0;
-            float dt = 0.1;
-            float e_ang = getAngle1() * dt;
-            float e_dist = getDistance() * dt; 
+            
+            float e_ang = getAngle1();
+            float e_dist = getDistance(); 
 
             while //(abs(e_ang) >= deg2rad(1)) /*current pose and delta_rot_1 + 2*/ 
                    (abs(e_dist) >= 0.05) //dist
@@ -70,12 +70,12 @@ class PID{
                 cd_vel.angular.y = 0;
                 cd_vel.angular.x = 0;
 
-                cd_vel.linear.x = (k1*e_dist / 17.0) + (k2*integral_dist) + (k3*diff_dist);
+                cd_vel.linear.x = (k1*e_dist / 20.0) + (k2*integral_dist) + (k3*diff_dist);
                 cd_vel.linear.y = 0;
                 cd_vel.linear.z = 0;
 
-                e_ang = getAngle1() * dt;
-                e_dist = getDistance() * dt;
+                e_ang = getAngle1();
+                e_dist = getDistance();
 
                 integral_theta += e_ang;
                 integral_dist += e_dist;
@@ -94,8 +94,8 @@ class PID{
         void PID2(){
             float integral_theta = 0;
             float diff_theta = 0;
-            float dt = 0.1;
-            float e_ang = getAngle2() * dt;
+            
+            float e_ang = getAngle2();
 
             while (abs(e_ang) >= deg2rad(1))
             {
@@ -108,7 +108,7 @@ class PID{
                 cd_vel.linear.y = 0;
                 cd_vel.linear.z = 0;
 
-                e_ang = getAngle2() * dt;
+                e_ang = getAngle2();
                 integral_theta += e_ang;
                 diff_theta = e_ang - diff_theta;
                 
