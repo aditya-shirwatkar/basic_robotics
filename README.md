@@ -1,3 +1,4 @@
-# Lecture Series Assignments
+# Note : Still under developement
 
-1. [pid_turtle](https://github.com/hubble-02/ivlbs_asgn/tree/master/pid_turtle)
+# PID controller
+  [pid_turtle](https://github.com/hubble-02/ivlbs_asgn/tree/master/pid_turtle) is a ROS package that implements PID controller on turtlesim package
