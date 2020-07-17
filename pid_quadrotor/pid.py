@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import time
 import matplotlib.animation as animation
 
-kd = 1
-ki = 0.01
-kp = 5.
+kd = 1.
+ki = .08
+kp = 1.
 
 kvy = 1.
 kvt = 1.
@@ -78,9 +78,10 @@ class Quadrotor():
         y_dot = y_dot + y_ddot*self.dt
         x_dot = x_dot + x_ddot*self.dt
 
-        theta = theta + theta_dot * self.dt
+        theta = np.arctan2(np.sin(theta + theta_dot * self.dt), np.cos(theta + theta_dot * self.dt))
         y = y + y_dot * self.dt
         x = x + x_dot * self.dt
+
         self.state = np.array([x, y, theta, x_dot, y_dot, theta_dot]).reshape(6, 1)
         self.statedot = np.array([x_dot, y_dot, theta_dot, x_ddot, y_ddot, theta_ddot]).reshape(6, 1)
 
@@ -105,7 +106,7 @@ del_x = 0; del_y = 0; del_theta = 0
 while not done:
     del_x += -model.state[0, 0]
     del_y += -model.state[1, 0]
-    del_theta += -model.state[2, 0]
+    del_theta += -np.arctan2(np.sin(model.state[2, 0]), np.cos(model.state[2, 0]))
 
     # u = np.array([0, 0])
     u1 = ((kd*(model.state[0, 0] - x[-1]) + kd*(model.state[1, 0] - y[-1]) 
@@ -146,7 +147,7 @@ while not done:
     ## for animation
     x.append(model.state[0, 0])
     y.append(model.state[1, 0])
-    theta.append(model.state[2, 0])
+    theta.append(np.arctan2(np.sin(model.state[2, 0]), np.cos(model.state[2, 0])))
     done = bool(
             abs(x[-1]) < 0.1
             and abs(y[-1]) < 0.1
