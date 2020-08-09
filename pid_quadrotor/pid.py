@@ -14,14 +14,14 @@ class Quadrotor():
         super().__init__()
         self.N = 80
         self.dt = 1/self.N
-        self.m = 0.5
+        self.m = 1.
         self.g = 9.81
         self.l = 2.5
         self.r = self.l/2
         self.I = self.m*(self.l**2)/12
         self.state = None
         self.statedot = None
-
+        self.maplimit = 5
         # M(q) & B(q) since C(q, q_dot) and Tau(q) is zero
         self.M = np.matrix([
             [self.m, 0, 0],
@@ -105,6 +105,12 @@ kpy = 1.
 kpt = 1.
 kit = 1.
 
+TUNING_MATRIX = np.array([
+    [1.,10,0],
+    [1.,10,0],
+    [1.,20,0]    
+])
+
 initial_state = np.array([np.random.uniform(low=-2.5+0.01, high=2.5-0.01),
                       np.random.uniform(low=-2.5+0.01, high=2.5-0.01),
                       np.random.uniform(low=-np.pi/6, high=np.pi/6),
@@ -126,7 +132,15 @@ dx = [model.state[3, 0]]; dy = [model.state[4, 0]]; dtheta = [model.state[5, 0]]
 
 del_x = 0; del_y = 0; del_theta = 0
 
+Kp_z, Kd_z , Ki_z = TUNING_MATRIX[0,:]
+Kp_y, Kd_y , Ki_y = TUNING_MATRIX[1,:]
+Kp_th, Kd_th , Ki_th = TUNING_MATRIX[2,:]
+
+des_state = np.array([0,0,0,0,0,0]) # z,y,zdot,ydot,zdotdot,y dotdot
+
+
 while not done:
+
     # del_x += -model.state[0, 0]
     # del_y += -model.state[1, 0]
     # del_theta += -np.arctan2(np.sin(model.state[2, 0]), np.cos(model.state[2, 0]))
@@ -135,20 +149,39 @@ while not done:
     ###############################################################
     ######## My First Try of u1, u2 which Failed ##################
     ###############################################################
-    u1 = ((kd*(model.state[0, 0] - x[-1]) + kd*(model.state[1, 0] - y[-1]) 
-        + kd*(model.state[2, 0] - theta[-1]))
-        + (kp*(- x[-1]) + kp*(- y[-1]) 
-        + kp*(- theta[-1]))
-        + (ki*(del_x) + ki*(del_y) 
-        + ki*(del_theta))
-        )/2 
-    u2 = ((kd*(model.state[0, 0] - x[-1]) + kd*(model.state[1, 0] - y[-1]) 
-        - kd*(model.state[2, 0] - theta[-1])
-        + (kp*(- x[-1]) + kp*(- y[-1]) 
-        - kp*(- theta[-1]))
-        + (ki*(del_x) + ki*(del_y) 
-        - ki*(del_theta))
-        ))/2
+    # u1 = ((kd*(model.state[0, 0] - x[-1]) + kd*(model.state[1, 0] - y[-1]) 
+    #     + kd*(model.state[2, 0] - theta[-1]))
+    #     + (kp*(- x[-1]) + kp*(- y[-1]) 
+    #     + kp*(- theta[-1]))
+    #     + (ki*(del_x) + ki*(del_y) 
+    #     + ki*(del_theta))
+    #     )/2 
+    # u2 = ((kd*(model.state[0, 0] - x[-1]) + kd*(model.state[1, 0] - y[-1]) 
+    #     - kd*(model.state[2, 0] - theta[-1])
+    #     + (kp*(- x[-1]) + kp*(- y[-1]) 
+    #     - kp*(- theta[-1]))
+    #     + (ki*(del_x) + ki*(del_y) 
+    #     - ki*(del_theta))
+    #     ))/2
+
+    phi_c = (-1/model.g) * (Kd_y * (- model.state[3]) +
+                                    Kp_y * (- model.state[0]))
+
+    u1 = ((model.m * ( model.g + 
+                            Kd_z * (- model.state[4]) +
+                            Kp_z * (- model.state[1])
+                    )) + 
+        (model.I * (Kd_th * (-1 * model.state[5]) +
+                    Kp_th * (phi_c - model.state[2]) ))
+        )/2
+
+    u2 = ((model.m * ( model.g + 
+                            Kd_z * (- model.state[4]) +
+                            Kp_z * (- model.state[1])
+                    )) - 
+        (model.I * (Kd_th * (-1 * model.state[5]) +
+                    Kp_th * (phi_c - model.state[2]) ))
+        )/2
 
     ###################################################################
     ######## My Second Try of u1, u2 which Failed too #################
@@ -202,11 +235,11 @@ while not done:
     done = bool(
             abs(x[-1]) < 0.1
             and abs(y[-1]) < 0.1
-            and abs(theta[-1]) < 0.01
+            and abs(theta[-1]) < 0.1
         )
     done = bool(
-            abs(x[-1]) >= 5
-            or abs(y[-1]) >= 5
+            abs(x[-1]) >= model.maplimit
+            or abs(y[-1]) >= model.maplimit
     )
 
     time_counter += model.dt
@@ -222,19 +255,19 @@ while not done:
 t = np.linspace(0, len(x), model.N)
 
 fig = plt.figure()
-ax = fig.add_subplot(121, autoscale_on=False, xlim=(-5, 5), ylim=(-5, 5))
+ax = fig.add_subplot(111, autoscale_on=False, xlim=(-model.maplimit, model.maplimit), ylim=(-model.maplimit, model.maplimit))
 ax.grid()
 
-state_plot = fig.add_subplot(122, autoscale_on=True, xlim=(0, len(x)), ylim=(-5, 5))
-state_plot.grid()
+# state_plot = fig.add_subplot(122, autoscale_on=True, xlim=(0, len(x)), ylim=(-5, 5))
+# state_plot.grid()
 
-posx, = state_plot.plot([], [], '-', label='x')
-posy, = state_plot.plot([], [], '-', label='y')
-postheta, = state_plot.plot([], [], '-', label='theta')
+# posx, = state_plot.plot([], [], '-', label='x')
+# posy, = state_plot.plot([], [], '-', label='y')
+# postheta, = state_plot.plot([], [], '-', label='theta')
 
-vely, = state_plot.plot([], [], '-', label='dx')
-velx, = state_plot.plot([], [], '-', label='dy')
-veltheta, = state_plot.plot([], [], '-', label='dtheta')
+# vely, = state_plot.plot([], [], '-', label='dx')
+# velx, = state_plot.plot([], [], '-', label='dy')
+# veltheta, = state_plot.plot([], [], '-', label='dtheta')
 
 
 time_template = 'time = %.1fs'
@@ -246,16 +279,16 @@ goal, = ax.plot([], [], linestyle='none', marker='+', color='green')
 cross, = ax.plot([], [], linestyle='none', marker='+', color='red')
 frame, = ax.plot([], [], '-', lw=10, color='tan')
 
-lx,ly,lt,ldx,ldy,ldt = [],[],[],[],[],[]
+# lx,ly,lt,ldx,ldy,ldt = [],[],[],[],[],[]
 
 def init():
-    lx,ly,lt,ldx,ldy,ldt = [],[],[],[],[],[]
-    posx.set_data([], [])
-    posy.set_data([], [])
-    postheta.set_data([], [])
-    velx.set_data([], [])
-    vely.set_data([], [])
-    veltheta.set_data([], [])
+    # lx,ly,lt,ldx,ldy,ldt = [],[],[],[],[],[]
+    # posx.set_data([], [])
+    # posy.set_data([], [])
+    # postheta.set_data([], [])
+    # velx.set_data([], [])
+    # vely.set_data([], [])
+    # veltheta.set_data([], [])
 
     base.set_data([], [])
     frame.set_data([], [])
@@ -264,14 +297,16 @@ def init():
     goal.set_data([], [])
     cross.set_data([], [])
     time_text.set_text('')
-    return posx, posy, postheta, velx, vely, veltheta, base, frame, fan1, fan2, goal, cross,time_text
+    # posx, posy, postheta, velx, vely, veltheta, 
+    return base, frame, fan1, fan2, goal, cross,time_text
 
 def animate(i):
-    global lx, ly, lt, ldy, ldx, ldt
-    if i == len(x):
-        lx,ly,lt,ldx,ldy,ldt = [],[],[],[],[],[]
+    # global lx, ly, lt, ldy, ldx, ldt
+    # if i == len(x):
+    #     lx,ly,lt,ldx,ldy,ldt = [],[],[],[],[],[]
 
-    lx.append(x[i]);ly.append(y[i]);lt.append(theta[i]);ldx.append(dx[i]);ldy.append(dy[i]);ldt.append(dtheta[i]);
+    # lx.append(x[i]);ly.append(y[i]);lt.append(theta[i]);ldx.append(dx[i]);ldy.append(dy[i]);ldt.append(dtheta[i]);
+    
     thisx = [x[i] - model.r*np.cos(theta[i]), 
              x[i] + model.r*np.cos(theta[i])]
     thisy = [y[i] - model.r*np.sin(theta[i]), 
@@ -304,15 +339,16 @@ def animate(i):
     cross.set_data(cx, cy)
     time_text.set_text(time_template % (i*20/len(t)))
 
-    posx.set_data(t[0:i], lx[0:i])
-    posy.set_data(t[0:i], ly[0:i])
-    postheta.set_data(t[0:i], lt[0:i])
-    velx.set_data(t[0:i], ldx[0:i])
-    vely.set_data(t[0:i], ldy[0:i])
-    veltheta.set_data(t[0:i], ldt[0:i])
+    # posx.set_data(t[0:i], lx[0:i])
+    # posy.set_data(t[0:i], ly[0:i])
+    # postheta.set_data(t[0:i], lt[0:i])
+    # velx.set_data(t[0:i], ldx[0:i])
+    # vely.set_data(t[0:i], ldy[0:i])
+    # veltheta.set_data(t[0:i], ldt[0:i])
 
+    # posx, posy, postheta, velx, vely, veltheta, 
 
-    return posx, posy, postheta, velx, vely, veltheta, base, frame, fan1, fan2, goal, cross, time_text
+    return base, frame, fan1, fan2, goal, cross, time_text
 
 ani = animation.FuncAnimation(fig, animate, np.arange(0, len(x)),
                               interval=25, blit=True)
