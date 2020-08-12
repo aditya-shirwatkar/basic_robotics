@@ -66,15 +66,16 @@ class Quadrotor():
 
         theta = np.arctan2(sintheta, costheta)
 
-        x_ddot = -((u1 + u2)*sintheta)/self.m
-        y_ddot = (((u1 + u2)*costheta) - (self.m*self.g))/self.m
+        x_ddot = -((u1 + u2)*theta)/self.m
+        y_ddot = (((u1 + u2)*1.) - (self.m*self.g))/self.m
         theta_ddot = ((u1 - u2)*self.r)/self.I
 
         theta_dot = theta_dot + theta_ddot*self.dt
         y_dot = y_dot + y_ddot*self.dt
         x_dot = x_dot + x_ddot*self.dt
 
-        theta = np.arctan2(np.sin(theta + theta_dot * self.dt), np.cos(theta + theta_dot * self.dt))
+        # theta = np.arctan2(np.sin(theta + theta_dot * self.dt), np.cos(theta + theta_dot * self.dt))
+        theta = theta + theta_dot * self.dt
         y = y + y_dot * self.dt
         x = x + x_dot * self.dt
 
@@ -106,14 +107,20 @@ kpt = 1.
 kit = 1.
 
 TUNING_MATRIX = np.array([
-    [1.,10,0],
-    [1.,10,0],
-    [1.,20,0]    
+    [5,10,0],
+    [5,10,0],
+    [5,10,0]    
 ])
+TUNING_MATRIX = np.array([
+    [50,20,0],
+    [50,20,0],
+    [10,20,0]    
+])
+
 
 initial_state = np.array([np.random.uniform(low=-2.5+0.01, high=2.5-0.01),
                       np.random.uniform(low=-2.5+0.01, high=2.5-0.01),
-                      np.random.uniform(low=-np.pi/6, high=np.pi/6),
+                      np.random.uniform(low=-np.pi/3, high=np.pi/3),
                       0,0,0]).reshape(6, 1)
 
 initial_statedot = np.zeros((6, 1))
@@ -138,7 +145,7 @@ Kp_th, Kd_th , Ki_th = TUNING_MATRIX[2,:]
 
 des_state = np.array([0,0,0,0,0,0]) # z,y,zdot,ydot,zdotdot,y dotdot
 
-
+count = 0
 while not done:
 
     # del_x += -model.state[0, 0]
@@ -164,6 +171,7 @@ while not done:
     #     - ki*(del_theta))
     #     ))/2
 
+    model.state[2] = np.arctan2(np.sin(model.state[2]), np.cos(model.state[2]))
     phi_c = (-1/model.g) * (Kd_y * (- model.state[3]) +
                                     Kp_y * (- model.state[0]))
 
@@ -232,14 +240,16 @@ while not done:
 
 
     # Termination of Loop
-    done = bool(
-            abs(x[-1]) < 0.1
-            and abs(y[-1]) < 0.1
-            and abs(theta[-1]) < 0.1
-        )
+
     done = bool(
             abs(x[-1]) >= model.maplimit
             or abs(y[-1]) >= model.maplimit
+        # or    
+        # (   abs(x[-1]) < 0.1
+        #     and abs(y[-1]) < 0.1
+        #     # and abs(theta[-1]) < 0.1
+        #     )
+        or time_counter >= model.N    
     )
 
     time_counter += model.dt
